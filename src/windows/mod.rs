@@ -1,4 +1,4 @@
-use std::{error::Error, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 fn get_search_paths() -> Vec<PathBuf> {
     let programdata = std::env::var("ProgramData").ok();
@@ -11,11 +11,15 @@ fn get_search_paths() -> Vec<PathBuf> {
     let mut paths = vec![];
 
     if let Some(path) = programdata {
-        paths.push(PathBuf::from(path + "\\Microsoft\\Windows\\Start Menu\\Programs"));
+        paths.push(PathBuf::from(
+            path + "\\Microsoft\\Windows\\Start Menu\\Programs",
+        ));
     }
 
     if let Some(path) = appdata {
-        paths.push(PathBuf::from(path + "\\Microsoft\\Windows\\Start Menu\\Programs"));
+        paths.push(PathBuf::from(
+            path + "\\Microsoft\\Windows\\Start Menu\\Programs",
+        ));
     }
 
     if let Some(path) = programfiles {
@@ -40,22 +44,25 @@ pub fn _get_app_path(app_name: &str) -> Option<String> {
     let mut matched = None;
     let mut paths = get_search_paths();
     while let Some(path) = paths.pop() {
-        for entry in fs::read_dir(path)?.flat_map(|e| e) {
+        for entry in fs::read_dir(path).ok()?.flat_map(|e| e) {
             let path = entry.path();
             if path.is_dir() {
                 paths.push(path);
             } else {
                 let file_name = path.file_name();
                 if let Some(file_name) = file_name {
-                    if file_name.to_string_lossy().to_lowercase() == app_name  || file_name.to_string_lossy().to_lowercase() == app_name.to_string() + ".exe"{
-                        if entry.metadata()?.is_symlink() {
+                    if file_name.to_string_lossy().to_lowercase() == app_name
+                        || file_name.to_string_lossy().to_lowercase()
+                            == app_name.to_string() + ".exe"
+                    {
+                        if entry.metadata().ok()?.is_symlink() {
                             if let Ok(target) = entry.path().read_link() {
                                 if target.is_file() {
                                     matched = Some(target);
                                     break;
                                 }
                             }
-                        } else  if entry.metadata()?.is_file() {
+                        } else if entry.metadata().ok()?.is_file() {
                             matched = Some(path);
                             break;
                         }
@@ -65,5 +72,5 @@ pub fn _get_app_path(app_name: &str) -> Option<String> {
         }
     }
 
-    Ok(matched.map(|path| path.as_os_str().to_string_lossy().to_string()))
+    matched.map(|path| path.as_os_str().to_string_lossy().to_string())
 }
